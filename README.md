@@ -54,7 +54,7 @@ Các module chính:
 ## Cài đặt
 
 ```powershell
-git clone <repository-url>
+git clone [<repository-url>](https://github.com/tui86/RAG_learning_python)
 cd rag_project
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
