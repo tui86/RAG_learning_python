@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enterprise RAG Chatbot</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .toggle-checkbox:checked { right: 0; border-color: #3b82f6; }
+        .toggle-checkbox:checked + .toggle-label { background-color: #3b82f6; }
+        .toggle-checkbox:checked + .toggle-label:before { transform: translateX(100%); }
+        
+        /* CSS tuỳ chỉnh cho nội dung Markdown để hiển thị đẹp hơn */
+        .markdown-content p { margin-bottom: 0.75em; }
+        .markdown-content p:last-child { margin-bottom: 0; }
+        .markdown-content ul { list-style-type: disc; padding-left: 1.5em; margin-bottom: 0.75em; }
+        .markdown-content ol { list-style-type: decimal; padding-left: 1.5em; margin-bottom: 0.75em; }
+        .markdown-content li { margin-bottom: 0.25em; }
+        .markdown-content strong { font-weight: 600; color: #1e293b; }
+        .markdown-content em { font-style: italic; }
+        .markdown-content code { background-color: #f1f5f9; padding: 0.2em 0.4em; border-radius: 0.25rem; font-family: monospace; font-size: 0.875em; color: #ef4444; }
+        .markdown-content pre { background-color: #1e293b; color: #f8fafc; padding: 1em; border-radius: 0.5rem; overflow-x: auto; margin-bottom: 0.75em; }
+        .markdown-content pre code { background-color: transparent; color: inherit; padding: 0; font-size: 0.875em; }
+        .markdown-content h1, .markdown-content h2, .markdown-content h3 { font-weight: 600; margin-top: 1em; margin-bottom: 0.5em; color: #0f172a; }
+        .markdown-content h3 { font-size: 1.125em; }
+        .markdown-content blockquote { border-left: 4px solid #cbd5e1; padding-left: 1em; color: #64748b; font-style: italic; margin-bottom: 0.75em; }
+    </style>
+</head>
+<body class="bg-slate-50 h-screen flex flex-col items-center justify-center p-4">
+
+    <div class="w-full max-w-3xl bg-white rounded-2xl shadow-xl overflow-hidden flex flex-col h-[600px] border border-slate-200">
+        
+        <!-- Header -->
+        <div class="bg-slate-800 text-white px-6 py-4 flex justify-between items-center">
+            <div>
+                <h1 class="text-xl font-bold flex items-center gap-2">
+                    📚 Thư viện AI
+                    <span class="text-xs bg-blue-500/20 text-blue-300 px-2 py-1 rounded-full border border-blue-500/30">v2.0</span>
+                </h1>
+                <p class="text-sm text-slate-300 mt-1">Trợ lý Hỏi đáp & Tổng hợp Tài liệu</p>
+            </div>
+        </div>
+
+        <!-- Chat Area (Nơi hiển thị tin nhắn) -->
+        <div class="flex-1 p-6 overflow-y-auto bg-slate-50 flex flex-col gap-4">
+            <!-- Tin nhắn của Bot -->
+            <div class="flex gap-3 max-w-[85%]">
+                <div class="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+                    🤖
+                </div>
+                <div class="bg-white border border-slate-200 text-slate-700 px-4 py-3 rounded-2xl rounded-tl-sm shadow-sm">
+                    Xin chào! Tôi có thể giúp gì cho bạn với kho tài liệu ngày hôm nay?<br><br>
+                    💡 <i>Mẹo: Hãy chọn chế độ tìm kiếm ở thanh bên dưới trước khi đặt câu hỏi nhé.</i>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white border-t border-slate-200 p-4">
+            
+            <!-- Bộ chọn Chế độ Tìm kiếm (Search Mode Selector) -->
+            <div class="flex items-center gap-3 mb-4 px-2">
+                <span class="text-sm font-semibold text-slate-600 uppercase tracking-wider">Chế độ phân tích:</span>
+                
+                <div class="flex bg-slate-100 p-1 rounded-lg border border-slate-200">
+                    <!-- Option 1: Vector Search -->
+                    <label class="cursor-pointer relative">
+                        <input type="radio" name="search_mode" value="local" class="peer sr-only" checked>
+                        <div class="px-4 py-2 rounded-md text-sm font-medium text-slate-500 peer-checked:bg-white peer-checked:text-blue-600 peer-checked:shadow-sm transition-all flex items-center gap-2">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                            Tìm chi tiết (Nhanh)
+                        </div>
+                    </label>
+                    
+                    <!-- Option 2: GraphRAG -->
+                    <label class="cursor-pointer relative">
+                        <input type="radio" name="search_mode" value="global" class="peer sr-only">
+                        <div class="px-4 py-2 rounded-md text-sm font-medium text-slate-500 peer-checked:bg-white peer-checked:text-indigo-600 peer-checked:shadow-sm transition-all flex items-center gap-2">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+                            Tóm tắt bao quát (Sâu)
+                        </div>
+                    </label>
+                </div>
+            </div>
+
+            <form class="flex gap-2 relative">
+                <input type="text" 
+                       placeholder="Đặt câu hỏi về tài liệu của bạn..." 
+                       class="w-full bg-slate-50 border border-slate-300 text-slate-900 text-sm rounded-xl focus:ring-blue-500 focus:border-blue-500 block px-4 py-3 outline-none transition-shadow hover:bg-white">
+                
+                <button type="button" class="absolute right-2 top-1/2 -translate-y-1/2 text-white bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm p-2 text-center inline-flex items-center transition-colors">
+                    <svg class="w-5 h-5 rotate-90" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
+                    <span class="sr-only">Gửi</span>
+                </button>
+            </form>
+            <p class="text-xs text-slate-400 mt-2 text-center">
+                Chọn <b>Tìm chi tiết</b> cho các định nghĩa/công thức. Chọn <b>Tóm tắt bao quát</b> khi cần tổng hợp toàn bộ sách.
+            </p>
+        </div>
+    </div>
+    <script src="/static/js/chat.js"></script>
+</body>
+</html>
