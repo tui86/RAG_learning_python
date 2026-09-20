@@ -30,10 +30,17 @@ class QueryGenerator:
         else:
             self.current_session_id = self.history_chat.create_new_session(user_id=self.current_user_id)
 
+    def _translate_question(self, question: str) -> str:
+        try:
+            return self.translator.translate(question)
+        except Exception:
+            logger.exception("Không thể dịch câu hỏi, dùng câu hỏi gốc để truy hồi")
+            return question
+
     def _get_standalone_query(self, question: str) -> str:
         '''Tạo câu hỏi độc lập từ câu hỏi mới và lịch sử trò chuyện hiện tại.'''
         if not self.current_session_id:
-            return self.translator.translate(question)
+            return self._translate_question(question)
 
         self.current_history_chat = self.history_chat.get_chat_history(self.current_session_id, limit=6)
         history_str = "".join(
@@ -62,7 +69,7 @@ Yêu cầu:
 
 Câu hỏi độc lập:"""
         if not self.client:
-            return self.translator.translate(question)
+            return self._translate_question(question)
 
         try:
             response = self.client.models.generate_content(model="gemini-2.5-flash", contents=prompt)
@@ -71,7 +78,7 @@ Câu hỏi độc lập:"""
             return standalone_query
         except Exception:
             logger.exception("Không thể tạo câu hỏi độc lập, dùng bản dịch thay thế")
-            return self.translator.translate(question)
+            return self._translate_question(question)
 
     def generate_answer(self, question: str, context: str) -> str:
         '''Tạo câu trả lời dựa trên câu hỏi và ngữ cảnh, đồng thời lưu lịch sử trò chuyện.'''
@@ -108,16 +115,19 @@ Trả lời:"""
 
     def extract_triplets_from_chunk(self, chunk_text: str) -> list[dict]:
         """Dùng LLM để rút trích các cặp (Subject - Predicate - Object) từ đoạn văn."""
-        promt = f"""Bạn là chuyên gia Phân tích Đồ thị Tri thức (Knowledge Graph Extraction).
-            Nhiệm vụ: Đọc đoạn văn bản và trích xuất các Thực thể (Entities) và Mối quan hệ (Relationships) chính.
-
-            ĐỊNH DẠNG ĐẦU RA (Đúng cấu trúc JSON Array, không thêm lời dẫn, không markdown block):
+        promt = f"""You are an expert in Knowledge Graph Extraction.
+        Task: Extract entities and relationships from the text below.
+        STRICT RULES:
+        1. Return the output in JSON or CSV format: [Source, Relation, Target].
+        2. DO NOT use Chinese or foreign languages. All Relations must be written in UPPERCASE ENGLISH (e.g., HAS_PART, IS_ABOUT, USES).
+        3. DO NOT include conversational phrases such as "Here is..." or "Sorry...". If no valid entities are found, return an empty array [].
+            OUTPUT FORMAT (Valid JSON Array structure, no introductory text, no markdown blocks, use only english):
             [
             {{"source": "Sparse Matrix", "relation": "IS_A_TYPE_OF", "target": "Matrix"}},
             {{"source": "CSR Method", "relation": "STORES", "target": "Non-zero Values"}}
             ]
 
-            VĂN BẢN:
+            TEXT:
             {chunk_text}
 
             JSON ARRAY:"""
@@ -146,9 +156,20 @@ Trả lời:"""
 
     def summary_nodes(self, edges_text: str) -> str:
         '''Tóm tắt các nodes dựa trên danh sách các mối quan hệ (edges) đã trích xuất.'''
-        promt = f"""Tóm tắt ngắn gọn các chủ đề và tri thức chính dựa trên danh sách các mối quan hệ dưới đây: 
-        {edges_text} 
-        Bản Tóm Tắt Chủ Đề:"""
+        promt = f"""
+        You are a professional data analysis AI. Your task is to synthesize the following concepts into a concise paragraph.
+
+        [LIST OF ENTITIES AND RELATIONSHIPS]:
+        {edges_text}
+
+        MANDATORY RULES (Violation will result in a penalty):
+        1. Use ONLY the information contained in the list above. ABSOLUTELY DO NOT use external knowledge from the internet.
+        2. ABSOLUTELY DO NOT translate into any language other than Vietnamese; do not use Chinese.
+        3. Do not mention the names of online courses (such as edX or Coursera) unless they are explicitly included in the list.
+        4. If the data is insufficient or meaningless, return exactly one sentence: "Dữ liệu không đủ để tóm tắt." Do not apologize.
+
+        Your summary:
+        """
         try:
             response = ollama.chat(model='qwen2.5', messages=[{'role':'user', 'content': promt}])
             response_text = response.message.content.strip()
