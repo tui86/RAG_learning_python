@@ -30,7 +30,10 @@ class RAG_System:
         texts, names = loader.read_pdf()
         chunks, sources = self.text_splitter.split_texts(texts, names)
         self.retriever.build_index(chunks, sources)
-        if create_knowledge_graph: self.graphRAG.build_knowledge_graph(chunks)
+        if create_knowledge_graph:
+            markdown_texts, markdown_names = loader.read_pdf_as_markdown()
+            chunks, sources = self.text_splitter.split_markdown(markdown_texts, markdown_names)
+            self.graphRAG.build_knowledge_graph(chunks, sources)
         logger.info("Đã ingest tài liệu vào hệ thống RAG")
 
     def query(self, question: str, mode: str = 'local') -> dict:

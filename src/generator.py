@@ -121,6 +121,7 @@ Trả lời:"""
         1. Return the output in JSON or CSV format: [Source, Relation, Target].
         2. DO NOT use Chinese or foreign languages. All Relations must be written in UPPERCASE ENGLISH (e.g., HAS_PART, IS_ABOUT, USES).
         3. DO NOT include conversational phrases such as "Here is..." or "Sorry...". If no valid entities are found, return an empty array [].
+        4. Convert all words to their base forms and use only the simple present tense for the sentences.
             OUTPUT FORMAT (Valid JSON Array structure, no introductory text, no markdown blocks, use only english):
             [
             {{"source": "Sparse Matrix", "relation": "IS_A_TYPE_OF", "target": "Matrix"}},
@@ -155,11 +156,11 @@ Trả lời:"""
             return []
 
     def summary_nodes(self, edges_text: str) -> str:
-        '''Tóm tắt các nodes dựa trên danh sách các mối quan hệ (edges) đã trích xuất.'''
+        '''Tóm tắt nội dung section cùng các mối quan hệ đã trích xuất.'''
         promt = f"""
-        You are a professional data analysis AI. Your task is to synthesize the following concepts into a concise paragraph.
+        You are a professional data analysis AI. Synthesize the following section content and relationships into a concise paragraph.
 
-        [LIST OF ENTITIES AND RELATIONSHIPS]:
+        [SECTION CONTENT AND RELATIONSHIPS]:
         {edges_text}
 
         MANDATORY RULES (Violation will result in a penalty):
@@ -167,7 +168,7 @@ Trả lời:"""
         2. ABSOLUTELY DO NOT translate into any language other than Vietnamese; do not use Chinese.
         3. Do not mention the names of online courses (such as edX or Coursera) unless they are explicitly included in the list.
         4. If the data is insufficient or meaningless, return exactly one sentence: "Dữ liệu không đủ để tóm tắt." Do not apologize.
-
+        5. use only simple present tense and avoid using the first person "I" in the summary.
         Your summary:
         """
         try:

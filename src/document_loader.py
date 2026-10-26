@@ -7,6 +7,8 @@ from typing import List, Tuple
 
 import pypdf
 
+import pymupdf4llm
+
 
 class ReadData:
     '''Lớp được dùng để đọc dữ liệu từ các file PDF trong một thư mục, làm sạch văn bản và lưu trữ nội dung đã đọc.'''
@@ -46,6 +48,22 @@ class ReadData:
         self.name_vector = name_vector
         return all_text, name_vector
 
+    def read_pdf_as_markdown(self) -> Tuple[List[str], List[str]]:
+        """Đọc PDF thành Markdown để giữ lại cấu trúc tiêu đề cho knowledge graph."""
+        markdown_texts: List[str] = []
+        names: List[str] = []
+
+        for filename in sorted(os.listdir(self.folder_path)):
+            if not filename.lower().endswith(".pdf"):
+                continue
+
+            markdown_text = pymupdf4llm.to_markdown(str(self.folder_path / filename))
+            if markdown_text.strip():
+                markdown_texts.append(markdown_text)
+                names.append(filename)
+
+        return markdown_texts, names
+
     def write_text_to_file(self, output_folder: str) -> None:
         """Ghi text đã đọc ra thư mục txt để tiện tra cứu."""
         output_path = Path(output_folder)
@@ -57,6 +75,19 @@ class ReadData:
         for text, name in zip(self.all_text, self.name_vector):
             output_file = output_path / f"{Path(name).stem}.txt"
             output_file.write_text(text, encoding="utf-8")
+
+        self.folder_out_path = str(output_path)
+
+    def write_text_to_markdown(self, input_folder: str, output_folder: str) -> None:
+        """Chuyển đổi tất cả file txt trong thư mục đầu vào sang định dạng markdown và lưu vào thư mục đầu ra."""
+        input_path = Path(input_folder)
+        output_path = Path(output_folder)
+        output_path.mkdir(parents=True, exist_ok=True)
+
+        for txt_file in sorted(input_path.glob("*.pdf")):
+            md_text = pymupdf4llm.to_markdown(str(txt_file))
+            output_file = output_path / f"{txt_file.stem}.md"
+            output_file.write_text(md_text, encoding="utf-8")
 
         self.folder_out_path = str(output_path)
 
@@ -74,3 +105,4 @@ class ReadData:
             texts.append(file.read_text(encoding="utf-8"))
             names.append(file.name)
         return texts, names
+

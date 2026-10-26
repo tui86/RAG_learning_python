@@ -20,6 +20,8 @@ data/rag_vector_db/
 data/*.pkl
 chunks.pkl
 *.sqlite3
+md/
+notebook/
 
 # Local editor and OS files
 .vscode/
