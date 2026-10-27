@@ -5,7 +5,6 @@ sentence-transformers
 langchain-text-splitters
 google-genai
 python-dotenv
-deep-translator
 numpy
 ollama
 pymongo

@@ -459,6 +459,12 @@ class GraphRAGManager:
         if not graph_data["books"]:
             return
 
+        # Ghi dữ liệu đồ thị tri thức vào file pickle để lưu trữ tạm thời. (debug)
+        with open(self.pickle_graph_path, 'wb') as f:
+            pickle.dump({
+                'graph_data': graph_data,
+            })
+
         with self.driver.session() as session:
             session.execute_write(self._create_elements, graph_data)
 

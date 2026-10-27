@@ -2,21 +2,77 @@ from __future__ import annotations
 
 from typing import List, Dict
 
-from deep_translator import GoogleTranslator
 from google import genai
 import ollama
 import re
 import json
+import torch
 
 from .config import get_env, logger
 from database.chat_history import ChatHistory
+from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
+
+class LocalTranslator:
+    def __init__(self):
+        self.model_name = "Helsinki-NLP/opus-mt-vi-en"
+
+        self.device = ( "cuda" if torch.cuda.is_available() else "cpu")
+
+        print(f"Loading translation model on {self.device}...")
+
+        self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
+
+        self.model = AutoModelForSeq2SeqLM.from_pretrained(self.model_name)
+
+        self.model.to(self.device)
+        self.model.eval()
+
+        print("Translation model loaded.")
+
+    @torch.inference_mode()
+    def translate(self, text: str) -> str:
+        if not isinstance(text, str):
+            raise TypeError("text must be a string")
+
+        text = text.strip()
+
+        if not text:
+            return ""
+
+        inputs = self.tokenizer(
+            text,
+            return_tensors="pt",
+            truncation=True,
+            max_length=512,
+        )
+
+        inputs = {
+            key: value.to(self.device)
+            for key, value in inputs.items()
+        }
+
+        output = self.model.generate(
+            **inputs,
+            max_new_tokens=256,
+            num_beams=4,
+        )
+
+        translated = self.tokenizer.decode(
+            output[0],
+            skip_special_tokens=True,
+        )
+
+        if not translated.strip():
+            raise RuntimeError("Translation returned empty text.")
+
+        return translated.strip()
 
 class QueryGenerator:
     '''Lớp dùng để tạo các truy vấn và câu trả lời độc lập bằng cách sử dụng các mô hình ngôn ngữ lớn (LLM) và quản lý lịch sử trò chuyện.'''
     def __init__(self, api_key: str | None = None):
         self.api_key = api_key or get_env("GOOGLE_API_KEY")
         self.client = genai.Client(api_key=self.api_key) if self.api_key else None
-        self.translator = GoogleTranslator(source="vi", target="en")
+        self.translator = LocalTranslator() 
         self.current_history_chat: List[Dict[str, str]] = []
         self.history_chat = ChatHistory()
         self.current_session_id = None
@@ -32,6 +88,7 @@ class QueryGenerator:
 
     def _translate_question(self, question: str) -> str:
         try:
+            print(f"Translating question: {question}")
             return self.translator.translate(question)
         except Exception:
             logger.exception("Không thể dịch câu hỏi, dùng câu hỏi gốc để truy hồi")
