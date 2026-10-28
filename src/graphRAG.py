@@ -8,17 +8,16 @@ import ollama
 import atexit
 import tqdm
 from pathlib import Path
-from .generator import QueryGenerator
 from src.config import get_env, logger
 from neo4j import GraphDatabase
 from gliner import GLiNER
 
 class GraphRAGManager:
     '''Lớp quản lý đồ thị tri thức cho các tác vụ RAG (Retrieval-Augmented Generation).'''
-    def __init__(self, auth:tuple = None, neo4j_uri: str = 'http://localhost:7474', pickle_graph_path: str = None):
+    def __init__(self, auth:tuple = None, neo4j_uri: str = 'http://localhost:7474', pickle_graph_path: str = None, generator=None):
         self.graph = nx.Graph()
         self.community_summaries = []
-        self.generator = QueryGenerator()
+        self.generator = generator or None
         self.uri = get_env(name='NEO4J_URI') or neo4j_uri
         self.auth = (get_env("NEO4J_USERNAME"), get_env("NEO4J_PASSWORD")) or auth
         self.driver = GraphDatabase.driver(self.uri, auth=self.auth)

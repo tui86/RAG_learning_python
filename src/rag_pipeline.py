@@ -22,7 +22,7 @@ class RAG_System:
         self.generator = QueryGenerator()
         self.text_splitter = TextSplitter()
         self.loader = ReadData(str(self.data_dir / "papers"))
-        self.graphRAG = GraphRAGManager()
+        self.graphRAG = GraphRAGManager(generator=self.generator)
 
     def ingest_documents(self, folder_path: str | None = None, create_knowledge_graph: bool = False) -> None:
         '''Thêm tài liệu vào hệ thống RAG, bao gồm đọc PDF, tách văn bản, xây dựng chỉ mục và (tùy chọn) xây dựng đồ thị tri thức.'''

@@ -53,7 +53,6 @@ class LocalTranslator:
 
         output = self.model.generate(
             **inputs,
-            max_new_tokens=256,
             num_beams=4,
         )
 
@@ -89,7 +88,9 @@ class QueryGenerator:
     def _translate_question(self, question: str) -> str:
         try:
             print(f"Translating question: {question}")
-            return self.translator.translate(question)
+            translated_question = self.translator.translate(question)
+            print(f"Translated question: {translated_question}")
+            return translated_question
         except Exception:
             logger.exception("Không thể dịch câu hỏi, dùng câu hỏi gốc để truy hồi")
             return question
