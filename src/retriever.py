@@ -69,6 +69,39 @@ class HybridRetriever:
             return 1.0
         return 1/(1 + math.exp(-x))
 
+    def select_by_largest_gap(self, scored_results: List[Tuple], k_min: int, final_top_k:int , min_gap: float = 0.08):
+        """
+        scored_results: danh sách (score, chunk, metadata),
+                        đã sắp xếp theo score giảm dần.
+        min_gap: khoảng cách tối thiểu để xem là điểm gãy đáng kể.
+        """
+        if not scored_results:
+            return []
+
+        limit = min(len(scored_results), final_top_k)
+        candidates = scored_results[:limit]
+
+        if len(candidates) <= k_min:
+            return candidates
+
+        scores = [item[0] for item in candidates]
+
+        gaps = [
+            scores[i] - scores[i + 1]
+            for i in range(len(scores) - 1)
+        ]
+
+        valid_gaps = [(gap, i) for i, gap in enumerate(gaps) if i + 1 >= k_min and gap >= min_gap]
+
+        if not valid_gaps:
+            return candidates
+
+        largest_gap, gap_index = max(valid_gaps)
+
+        keep_count = gap_index + 1
+
+        return candidates[:keep_count]
+
     def build_index(self, chunks: List[str], sources: List[str]) -> None:
         '''Xây dựng chỉ mục vector từ các chunks và lưu vào Chroma DB, đồng thời cập nhật cache BM25.'''
         existing_ids = set(self.collection.get()["ids"]) if self.collection.count() > 0 else set()
@@ -169,22 +202,8 @@ class HybridRetriever:
 
         # Lọc các chunks dựa trên percentile-based selection
         logger.info("Scored results: %s", scored_results)
-        top_best_score = scored_results[0][0]
-        percentile_threshold = top_best_score * score_percentile
         
-        best_chunks = []
-        for i, (score, chunk, metadata) in enumerate(scored_results):
-            if i < k_min:
-                best_chunks.append(scored_results[i])
-                continue
-
-            if i >= final_top_k:
-                break
-            
-            if score >= percentile_threshold:
-                best_chunks.append(scored_results[i])
-            else:
-                break
+        best_chunks = self.select_by_largest_gap(scored_results, k_min, final_top_k)
 
         formatted_context = []
         for score, chunk_text, meta in best_chunks:
