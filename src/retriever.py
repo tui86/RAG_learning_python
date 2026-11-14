@@ -11,6 +11,7 @@ import chromadb
 import numpy as np
 from rank_bm25 import BM25Okapi
 from sentence_transformers import CrossEncoder, SentenceTransformer
+from pathlib import Path
 
 from .config import logger
 
@@ -18,6 +19,8 @@ from .config import logger
 
 class HybridRetriever:
     '''Lớp để quản lý việc truy xuất thông tin từ cơ sở dữ liệu vector, kết hợp giữa dense retrieval (Chroma DB) và sparse retrieval (BM25).'''
+    BM25_CACHE_VERSION = 2
+
     def __init__(self, db_path: str, pickle_path: str | None = None):
         self.db_path = db_path
         self.pickle_path = pickle_path or os.path.join(db_path, "bm25_cache.pkl")
@@ -43,10 +46,17 @@ class HybridRetriever:
             return False
         with open(self.pickle_path, "rb") as handle:
             cache_data = pickle.load(handle)
+        if cache_data.get("version") != self.BM25_CACHE_VERSION:
+            return False
+
         self.bm25 = cache_data.get("bm25")
         self.all_ids = cache_data.get("all_ids", [])
         self.name_vector = cache_data.get("name_vector", [])
-        return self.bm25 is not None
+        return (
+            self.bm25 is not None
+            and len(self.all_ids) == self.collection.count()
+            and len(self.name_vector) == len(self.all_ids)
+        )
 
     def _save_cache(self) -> None:
         '''Lưu cache BM25 vào file pickle để sử dụng lại sau này.'''
@@ -54,12 +64,27 @@ class HybridRetriever:
         with open(self.pickle_path, "wb") as handle:
             pickle.dump(
                 {
+                    "version": self.BM25_CACHE_VERSION,
                     "bm25": self.bm25,
                     "all_ids": self.all_ids,
                     "name_vector": self.name_vector,
                 },
                 handle,
             )
+
+    def _rebuild_bm25(self) -> None:
+        records = self.collection.get(include=["documents", "metadatas"])
+        ids = records.get("ids", [])
+        documents = records.get("documents") or []
+        metadatas = records.get("metadatas") or [{} for _ in ids]
+
+        if len(ids) != len(documents) or len(ids) != len(metadatas):
+            raise ValueError("ChromaDB trả về số ID, documents và metadatas không khớp.")
+
+        tokenized_corpus = [re.findall(r"\w+", document.lower()) for document in documents]
+        self.all_ids = list(ids)
+        self.name_vector = [metadata.get("source", "Unknown") for metadata in metadatas]
+        self.bm25 = BM25Okapi(tokenized_corpus) if tokenized_corpus else None
 
     @staticmethod
     def __sigmoid(x: float) -> float [0.0, 1.0]:
@@ -104,41 +129,74 @@ class HybridRetriever:
 
     def build_index(self, chunks: List[str], sources: List[str]) -> None:
         '''Xây dựng chỉ mục vector từ các chunks và lưu vào Chroma DB, đồng thời cập nhật cache BM25.'''
+
         existing_ids = set(self.collection.get()["ids"]) if self.collection.count() > 0 else set()
         ids: List[str] = []
         unique_chunks: List[str] = []
         unique_sources: List[str] = []
 
         for chunk, source in zip(chunks, sources):
-            chunk_id = self._generate_chunk_id(chunk)
+            normalized_chunk = chunk.encode("utf-16", errors="surrogatepass").decode(
+                "utf-16", errors="replace"
+            )
+            chunk_id = self._generate_chunk_id(normalized_chunk)
             if chunk_id in existing_ids:
                 continue
             existing_ids.add(chunk_id)
-            unique_chunks.append(chunk)
+            unique_chunks.append(normalized_chunk)
             unique_sources.append(source)
             ids.append(chunk_id)
 
-        if not ids:
+        if ids:
+            embeddings = self.model.encode(unique_chunks)
+            metadatas = [{"source": src, "chunk_id": idx + 1} for idx, src in enumerate(unique_sources)]
+            BATCH_SIZE = 1000
+            for embed_batch, chunk_batch, meta_batch, id_batch in zip(
+                [embeddings[i:i + BATCH_SIZE] for i in range(0, len(embeddings), BATCH_SIZE)],
+                [unique_chunks[i:i + BATCH_SIZE] for i in range(0, len(unique_chunks), BATCH_SIZE)],
+                [metadatas[i:i + BATCH_SIZE] for i in range(0, len(metadatas), BATCH_SIZE)],
+                [ids[i:i + BATCH_SIZE] for i in range(0, len(ids), BATCH_SIZE)],
+            ):
+                self.collection.add(
+                    embeddings=embed_batch,
+                    documents=chunk_batch,
+                    metadatas=meta_batch,
+                    ids=id_batch,
+                )
+        else:
             logger.info("Không có chunk mới để thêm vào kho vector")
-            return
 
-        embeddings = self.model.encode(unique_chunks)
-        metadatas = [{"source": src, "chunk_id": idx + 1} for idx, src in enumerate(unique_sources)]
-        self.collection.add(embeddings=embeddings, documents=unique_chunks, metadatas=metadatas, ids=ids)
-        self.all_ids.extend(ids)
-        self.name_vector.extend(unique_sources)
-
-        tokenized_corpus = [re.findall(r"\w+", chunk.lower()) for chunk in unique_chunks]
-        self.bm25 = BM25Okapi(tokenized_corpus) if self.bm25 is None else self.bm25
+        self._rebuild_bm25()
         self._save_cache()
-        logger.info("Đã lưu trữ chunks vào Chroma DB")
+        if ids:
+            logger.info("Đã lưu trữ chunks vào Chroma DB")
+
+    def build_index_with_chunks_file(self, chunks_file: str) -> None:
+        '''Xây dựng chỉ mục vector từ file pickle chứa chunks và sources.'''
+        if not os.path.exists(chunks_file):
+            raise FileNotFoundError(f"File {chunks_file} không tồn tại.")
+        with open(chunks_file, "rb") as f:
+            data = pickle.load(f)
+        chunks = data.get("chunks", [])
+        sources = data.get("sources", [])
+        self.build_index(chunks, sources)
 
     def load_index(self) -> None:
         '''Tải chỉ mục từ Chroma DB và cache BM25 nếu tồn tại.'''
-        if self._load_cache() and self.collection.count() > 0:
+        if self.collection.count() == 0:
+            self.bm25 = None
+            self.all_ids = []
+            self.name_vector = []
+            logger.info("Chưa có cache, sẽ tạo index khi dữ liệu được cung cấp")
+            return
+
+        if self._load_cache():
             logger.info("Đã tải cache và index từ Chroma DB")
             return
-        logger.info("Chưa có cache, sẽ tạo index khi dữ liệu được cung cấp")
+
+        self._rebuild_bm25()
+        self._save_cache()
+        logger.info("Đã tạo lại cache BM25 từ documents trong Chroma DB")
 
     def retriever(self, question: str, top_k: int = 15, final_top_k: int = 10, k_min: int = 2, rrf_k: int = 60, score_percentile: float = 0.75) -> str:
         """

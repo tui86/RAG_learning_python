@@ -4,6 +4,7 @@ import os
 import re
 from pathlib import Path
 from typing import List, Tuple
+from .config import logger
 
 import pypdf
 
@@ -43,6 +44,7 @@ class ReadData:
             if cleaned_text:
                 all_text.append(cleaned_text)
                 name_vector.append(filename)
+            logger.info(f"Đã đọc file PDF: {filename}, số ký tự: {len(cleaned_text)}")
 
         self.all_text = all_text
         self.name_vector = name_vector

@@ -146,7 +146,7 @@ python -m unittest discover -s tests -p "test_*.py"
 - Nếu credential từng được commit hoặc chia sẻ, hãy thu hồi và tạo credential mới.
 - Dữ liệu PDF trong `data/papers/` có thể chứa nội dung riêng tư; kiểm tra chính sách dữ liệu trước khi đưa lên repository. 
 
-            Các file trong dự án: ['rag_project/build.py', 'rag_project/main.py', 'rag_project/only_one_use.py', 'rag_project/rag_web.py', 'rag_project/database/chat_history.py', 'rag_project/legacy/graphRAG.py', 'rag_project/src/config.py', 'rag_project/src/document_loader.py', 'rag_project/src/generator.py', 'rag_project/src/graphRAG.py', 'rag_project/src/rag_pipeline.py', 'rag_project/src/retriever.py', 'rag_project/src/text_splitter.py', 'rag_project/src/__init__.py', 'rag_project/tests/query_data_test.py', 'rag_project/tests/test_env.py', 'rag_project/tests/test_graph_rag.py', 'rag_project/tests/translate.py', 'rag_project/web/UI.py'] 
+            Các file trong dự án: ['rag_project/build.py', 'rag_project/main.py', 'rag_project/only_one_use.py', 'rag_project/rag_web.py', 'rag_project/database/chat_history.py', 'rag_project/legacy/graphRAG.py', 'rag_project/src/config.py', 'rag_project/src/document_loader.py', 'rag_project/src/generator.py', 'rag_project/src/graphRAG.py', 'rag_project/src/rag_pipeline.py', 'rag_project/src/retriever.py', 'rag_project/src/text_splitter.py', 'rag_project/src/__init__.py', 'rag_project/tests/query_data_test.py', 'rag_project/tests/test_env.py', 'rag_project/tests/test_graph.py', 'rag_project/tests/test_graph_rag.py', 'rag_project/tests/translate.py', 'rag_project/web/UI.py'] 
 
             Chỉ đọc: False 
 ## Tên file: rag_project/build.py 
@@ -359,7 +359,7 @@ Trả về `limit` tin nhắn gần nhất để nạp vào Context Window của
 
             Các lớp được lớp này thừa kế: [] 
 
-            Các hàm trong lớp này: ['__init__', '_clean_text', 'read_pdf', 'write_text_to_file', 'read_out_text'] 
+            Các hàm trong lớp này: ['__init__', '_clean_text', 'read_pdf', 'read_pdf_as_markdown', 'write_text_to_file', 'write_text_to_markdown', 'read_out_text'] 
 
             Chỉ đọc: False 
 #### Tên hàm: __init__ 
@@ -383,11 +383,25 @@ Trả về `limit` tin nhắn gần nhất để nạp vào Context Window của
                 Mô tả hàm: Đọc tất cả file PDF trong thư mục và trả về nội dung đã làm sạch. 
 
                 Chỉ đọc: False 
+#### Tên hàm: read_pdf_as_markdown 
+
+                Decorator: [] 
+
+                Mô tả hàm: Đọc PDF thành Markdown để giữ lại cấu trúc tiêu đề cho knowledge graph. 
+
+                Chỉ đọc: False 
 #### Tên hàm: write_text_to_file 
 
                 Decorator: [] 
 
                 Mô tả hàm: Ghi text đã đọc ra thư mục txt để tiện tra cứu. 
+
+                Chỉ đọc: False 
+#### Tên hàm: write_text_to_markdown 
+
+                Decorator: [] 
+
+                Mô tả hàm: Chuyển đổi tất cả file txt trong thư mục đầu vào sang định dạng markdown và lưu vào thư mục đầu ra. 
 
                 Chỉ đọc: False 
 #### Tên hàm: read_out_text 
@@ -401,11 +415,34 @@ Trả về `limit` tin nhắn gần nhất để nạp vào Context Window của
 
             Mô tả file: None 
 
-            Các class trong file: ['QueryGenerator'] 
+            Các class trong file: ['LocalTranslator', 'QueryGenerator'] 
 
             Các hàm lẻ trong file: [] 
 
             Chỉ đọc: False 
+### Tên Lớp: LocalTranslator 
+
+            Mô tả lớp: None 
+
+            Các lớp được lớp này thừa kế: [] 
+
+            Các hàm trong lớp này: ['__init__', 'translate'] 
+
+            Chỉ đọc: False 
+#### Tên hàm: __init__ 
+
+                Decorator: [] 
+
+                Mô tả hàm: None 
+
+                Chỉ đọc: False 
+#### Tên hàm: translate 
+
+                Decorator: [] 
+
+                Mô tả hàm: None 
+
+                Chỉ đọc: False 
 ### Tên Lớp: QueryGenerator 
 
             Mô tả lớp: Lớp dùng để tạo các truy vấn và câu trả lời độc lập bằng cách sử dụng các mô hình ngôn ngữ lớn (LLM) và quản lý lịch sử trò chuyện. 
@@ -461,7 +498,7 @@ Trả về `limit` tin nhắn gần nhất để nạp vào Context Window của
 
                 Decorator: [] 
 
-                Mô tả hàm: Tóm tắt các nodes dựa trên danh sách các mối quan hệ (edges) đã trích xuất. 
+                Mô tả hàm: Tóm tắt nội dung section cùng các mối quan hệ đã trích xuất. 
 
                 Chỉ đọc: False 
 #### Tên hàm: graph_search_answer 
@@ -486,7 +523,7 @@ Trả về `limit` tin nhắn gần nhất để nạp vào Context Window của
 
             Các lớp được lớp này thừa kế: [] 
 
-            Các hàm trong lớp này: ['__init__', '_create_constraint', '_create_elements_and_summary', '_normalize_text', 'get_context_from_neo4j', 'generator_extracted_entities', 'global_search_answer', '_register_shutdown', 'close', '__del__'] 
+            Các hàm trong lớp này: ['__init__', '_create_constraint', '_stable_id', '_create_elements', '_create_section_summary', '_create_legacy_elements', '_create_legacy_summary', '_read_graph', '_write_graph', '_check_book_exists', 'convert_pkl_to_neo', '_normalize_text', 'get_context_from_neo4j', 'generator_extracted_entities', 'build_knowledge_graph', 'global_search_answer', '_register_shutdown', 'close', '__del__'] 
 
             Chỉ đọc: False 
 #### Tên hàm: __init__ 
@@ -503,11 +540,67 @@ Trả về `limit` tin nhắn gần nhất để nạp vào Context Window của
                 Mô tả hàm: None 
 
                 Chỉ đọc: False 
-#### Tên hàm: _create_elements_and_summary 
+#### Tên hàm: _stable_id 
+
+                Decorator: ['staticmethod'] 
+
+                Mô tả hàm: None 
+
+                Chỉ đọc: False 
+#### Tên hàm: _create_elements 
+
+                Decorator: ['staticmethod'] 
+
+                Mô tả hàm: Tạo các nút và quan hệ trong Neo4j dựa trên dữ liệu đồ thị tri thức đã được chuẩn bị. 
+
+                Chỉ đọc: False 
+#### Tên hàm: _create_section_summary 
+
+                Decorator: ['staticmethod'] 
+
+                Mô tả hàm: Tạo nút Summary và quan hệ HAS_SUMMARY giữa Section và Summary. 
+
+                Chỉ đọc: False 
+#### Tên hàm: _create_legacy_elements 
+
+                Decorator: ['staticmethod'] 
+
+                Mô tả hàm: Tạo các nút Entity và quan hệ RELATED_TO giữa các Entity từ dữ liệu legacy. 
+
+                Chỉ đọc: False 
+#### Tên hàm: _create_legacy_summary 
+
+                Decorator: ['staticmethod'] 
+
+                Mô tả hàm: Tạo các nút Summary và quan hệ HAS_SUMMARY giữa Entity và Summary từ dữ liệu legacy. 
+
+                Chỉ đọc: False 
+#### Tên hàm: _read_graph 
 
                 Decorator: [] 
 
-                Mô tả hàm: None 
+                Mô tả hàm: Đọc đồ thị tri thức và các tóm tắt cộng đồng từ file pickle. 
+
+                Chỉ đọc: False 
+#### Tên hàm: _write_graph 
+
+                Decorator: [] 
+
+                Mô tả hàm: Ghi đồ thị tri thức và các tóm tắt cộng đồng vào file pickle. 
+
+                Chỉ đọc: False 
+#### Tên hàm: _check_book_exists 
+
+                Decorator: [] 
+
+                Mô tả hàm: Kiểm tra xem một Book có tồn tại trong Neo4j hay không dựa trên book_id. 
+
+                Chỉ đọc: False 
+#### Tên hàm: convert_pkl_to_neo 
+
+                Decorator: [] 
+
+                Mô tả hàm: Chuyển đổi file pkl sang neo4j 
 
                 Chỉ đọc: False 
 #### Tên hàm: _normalize_text 
@@ -532,6 +625,15 @@ Trả về `limit` tin nhắn gần nhất để nạp vào Context Window của
 Sử dụng mô hình GLiNER để nhận diện các thực thể trong câu hỏi.
 question: str - Câu hỏi của người dùng.
 return: list[str] - Danh sách các thực thể đã trích xuất. 
+
+                Chỉ đọc: False 
+#### Tên hàm: build_knowledge_graph 
+
+                Decorator: [] 
+
+                Mô tả hàm: Xây dựng đồ thị tri thức từ các chunks và lưu vào Neo4j.
+chunks: list[str | dict] - Danh sách các chunks văn bản hoặc dict chứa thông tin chunk.
+return: None 
 
                 Chỉ đọc: False 
 #### Tên hàm: global_search_answer 
@@ -625,7 +727,7 @@ return: tuple[str, str] - Câu trả lời và ngữ cảnh liên quan.
 
             Các lớp được lớp này thừa kế: [] 
 
-            Các hàm trong lớp này: ['__init__', '_generate_chunk_id', '_load_cache', '_save_cache', '__sigmoid', 'build_index', 'load_index', 'retriever'] 
+            Các hàm trong lớp này: ['__init__', '_generate_chunk_id', '_load_cache', '_save_cache', '__sigmoid', 'select_by_largest_gap', 'build_index', 'build_index_with_chunks_file', 'load_index', 'retriever'] 
 
             Chỉ đọc: False 
 #### Tên hàm: __init__ 
@@ -663,11 +765,27 @@ return: tuple[str, str] - Câu trả lời và ngữ cảnh liên quan.
                 Mô tả hàm: None 
 
                 Chỉ đọc: False 
+#### Tên hàm: select_by_largest_gap 
+
+                Decorator: [] 
+
+                Mô tả hàm: scored_results: danh sách (score, chunk, metadata),
+                đã sắp xếp theo score giảm dần.
+min_gap: khoảng cách tối thiểu để xem là điểm gãy đáng kể. 
+
+                Chỉ đọc: False 
 #### Tên hàm: build_index 
 
                 Decorator: [] 
 
                 Mô tả hàm: Xây dựng chỉ mục vector từ các chunks và lưu vào Chroma DB, đồng thời cập nhật cache BM25. 
+
+                Chỉ đọc: False 
+#### Tên hàm: build_index_with_chunks_file 
+
+                Decorator: [] 
+
+                Mô tả hàm: Xây dựng chỉ mục vector từ file pickle chứa chunks và sources. 
 
                 Chỉ đọc: False 
 #### Tên hàm: load_index 
@@ -707,7 +825,7 @@ Args:
 
             Các lớp được lớp này thừa kế: [] 
 
-            Các hàm trong lớp này: ['__init__', 'split_texts'] 
+            Các hàm trong lớp này: ['__init__', 'split_texts', 'split_markdown'] 
 
             Chỉ đọc: False 
 #### Tên hàm: __init__ 
@@ -724,6 +842,16 @@ Args:
                 Mô tả hàm: Tách danh sách văn bản thành các chunks nhỏ hơn dựa trên kích thước và độ chồng lấp đã định nghĩa.
 Args:
     texts: Danh sách các văn bản cần tách.
+    names: Danh sách tên tương ứng với mỗi văn bản (tùy chọn).  
+
+                Chỉ đọc: False 
+#### Tên hàm: split_markdown 
+
+                Decorator: [] 
+
+                Mô tả hàm: Tách danh sách văn bản Markdown thành các chunks nhỏ hơn dựa trên tiêu đề và cấu trúc Markdown.
+Args:
+    texts: Danh sách các văn bản Markdown cần tách.
     names: Danh sách tên tương ứng với mỗi văn bản (tùy chọn).  
 
                 Chỉ đọc: False 
@@ -746,6 +874,15 @@ Args:
 
             Chỉ đọc: False 
 ## Tên file: rag_project/tests/test_env.py 
+
+            Mô tả file: None 
+
+            Các class trong file: [] 
+
+            Các hàm lẻ trong file: [] 
+
+            Chỉ đọc: False 
+## Tên file: rag_project/tests/test_graph.py 
 
             Mô tả file: None 
 

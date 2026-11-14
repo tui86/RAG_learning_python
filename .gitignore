@@ -18,6 +18,7 @@ __pycache__/
 data/logs/
 data/rag_vector_db/
 data/*.pkl
+data/papers
 *.pkl
 *.sqlite3
 md/

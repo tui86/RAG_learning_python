@@ -23,16 +23,24 @@ class RAG_System:
         self.text_splitter = TextSplitter()
         self.loader = ReadData(str(self.data_dir / "papers"))
         self.graphRAG = GraphRAGManager(generator=self.generator)
+        self.chunks_file = self.data_dir / "chunks.pkl"
 
     def ingest_documents(self, folder_path: str | None = None, create_knowledge_graph: bool = False) -> None:
         '''Thêm tài liệu vào hệ thống RAG, bao gồm đọc PDF, tách văn bản, xây dựng chỉ mục và (tùy chọn) xây dựng đồ thị tri thức.'''
-        loader = self.loader if folder_path is None else ReadData(folder_path)
-        texts, names = loader.read_pdf()
-        chunks, sources = self.text_splitter.split_texts(texts, names)
-        self.retriever.build_index(chunks, sources)
-        if create_knowledge_graph:
+        if self.chunks_file.exists():
+            loader = self.loader if folder_path is None else ReadData(folder_path)
+            self.retriever.build_index_with_chunks_file(str(self.chunks_file))
+            logger.info(f"Đã nạp chunks từ file {self.chunks_file} vào Chroma DB")
             markdown_texts, markdown_names = loader.read_pdf_as_markdown()
-            chunks, sources = self.text_splitter.split_markdown(markdown_texts, markdown_names)
+            chunks, sources = self.text_splitter.split_markdown(markdown_texts, markdown_names, self.graphRAG)
+        else:
+            loader = self.loader if folder_path is None else ReadData(folder_path)
+            texts, names = loader.read_pdf()
+            chunks, sources = self.text_splitter.split_texts(texts, names)
+            self.retriever.build_index(chunks, sources)
+            markdown_texts, markdown_names = loader.read_pdf_as_markdown()
+            chunks, sources = self.text_splitter.split_markdown(markdown_texts, markdown_names, self.graphRAG)
+        if create_knowledge_graph:
             self.graphRAG.build_knowledge_graph(chunks, sources)
         logger.info("Đã ingest tài liệu vào hệ thống RAG")
 

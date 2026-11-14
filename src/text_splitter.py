@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 from typing import List, Tuple
+from .config import logger
 
 from langchain_core.documents import Document
 from langchain_text_splitters import RecursiveCharacterTextSplitter, MarkdownHeaderTextSplitter
 
 import pickle
+
 
 class TextSplitter:
     '''Lớp để tách văn bản thành các chunks nhỏ hơn, phục vụ cho việc truy xuất thông tin và xây dựng chỉ mục.'''
@@ -51,7 +53,7 @@ class TextSplitter:
 
         return chunks, sources
 
-    def split_markdown(self, texts: List[str], names: List[str] | None = None) -> Tuple[List[Document], List[str]]:
+    def split_markdown(self, texts: List[str], names: List[str] | None = None, graphRAG: None = None) -> Tuple[List[Document], List[str]]:
         '''Tách danh sách văn bản Markdown thành các chunks nhỏ hơn dựa trên tiêu đề và cấu trúc Markdown.
         Args:
             texts: Danh sách các văn bản Markdown cần tách.
@@ -70,6 +72,10 @@ class TextSplitter:
         resolved_names = names or ["unknown"] * len(texts)
 
         for text, name in zip(texts, resolved_names):
+            if not graphRAG:
+                logger.warning("graphRAG chưa được khởi tạo. Bỏ qua việc kiểm tra sự tồn tại của Book trong Neo4j.")
+            elif graphRAG._check_book_exists(name):
+                logger.info(f"Book '{name}' đã tồn tại trong Neo4j. Bỏ qua việc tách và thêm vào chỉ mục.")
             header_documents = header_splitter.split_text(text)
             chunks.extend(header_documents)
             sources.extend([name] * len(header_documents))

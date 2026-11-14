@@ -198,6 +198,16 @@ class GraphRAGManager:
             }, f)
         return
 
+    def _check_book_exists(self, book_name: str) -> bool:
+        """Kiểm tra xem một Book có tồn tại trong Neo4j hay không dựa trên book_id."""
+        book_id = self._stable_id(book_name.casefold())
+        with self.driver.session() as session:
+            result = session.run(
+                "MATCH (b:Book {book_id: $book_id}) RETURN b LIMIT 1",
+                book_id=book_id
+            )
+            return result.single() is not None
+
     def convert_pkl_to_neo(self):
         """Chuyển đổi file pkl sang neo4j"""
         self._read_graph(self.pickle_graph_path)
